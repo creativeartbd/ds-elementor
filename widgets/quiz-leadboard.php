@@ -369,6 +369,8 @@ class Quiz_Leadboard extends \Elementor\Widget_Base
 
                 $count = 0;
                 foreach ($quiz_results as $result) {
+                    $username = get_user_by('id', $result->user);
+                    $username = $username->user_login;
                     $count++;
                     $mlw_qmn_results_array = unserialize($result->quiz_results);
 
@@ -406,7 +408,7 @@ class Quiz_Leadboard extends \Elementor\Widget_Base
                     echo '</pre>';
                     echo "<tr>";
                     echo "<td>{$count}</td>";
-                    echo "<td><a href='" . site_url() . '/author/' . $result->name . "'>{$result->name}</a></td>";
+                    echo "<td><a href='" . site_url() . '/author/' . $username . "'>{$result->name}</a></td>";
                     echo "<td>{$final_score}</td>";
                     echo "<td>{$actual_hour}h {$actual_minutes}m {$actual_seconds}</td>";
                     echo "<td>{$result->time_taken}</td>";
