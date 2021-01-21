@@ -448,7 +448,7 @@ class Quiz_Leadboard extends \Elementor\Widget_Base
             echo "<div class='text-center'>";
             echo '<p class="text-danger">' . __("Please <a href='{$login_url}'>login</a> to view all quiz results", "dew") . '</p>';
             echo '<h6>-Or-</h6>';
-            echo "<div class='text-center'>";
+            echo "<div style='display: block; margin-left: auto; margin-right: auto; width: fit-content;'>";
             echo do_shortcode('[nextend_social_login provider="facebook"]');
             echo "</div>";
             echo "</div>";
