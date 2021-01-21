@@ -117,6 +117,20 @@ class Quiz_Leadboard extends \Elementor\Widget_Base
             ]
         );
 
+        $this->add_control(
+            'ql_leadboard_quiz_resul_page',
+            [
+                'label' => __('Add quiz result page', 'dew'),
+                'type' => \Elementor\Controls_Manager::URL,
+                'show_external' => true,
+                'default' => [
+                    'url' => '',
+                    'is_external' => true,
+                    'nofollow' => true,
+                ],
+            ]
+        );
+
         $this->end_controls_section();
     }
 
@@ -331,98 +345,112 @@ class Quiz_Leadboard extends \Elementor\Widget_Base
     {
         $ql_leadboard_title = $this->get_settings('ql_leadboard_title');
         $ql_leadboard_description = $this->get_settings('ql_leadboard_description');
+        $ql_leadboard_quiz_resul_page = $this->get_settings('ql_leadboard_quiz_resul_page');
 
         $this->add_render_attribute('ql_leadboard_title', 'class', 'ql_title');
         $this->add_render_attribute('ql_leadboard_description', 'class', 'ql_description');
 
-        global $wpdb;
-        $result_table = $wpdb->base_prefix . 'mlw_results';
-        $quiz_table = $wpdb->base_prefix . 'mlw_quizzes';
+        if (is_user_logged_in()) {
+            global $wpdb;
+            $result_table = $wpdb->base_prefix . 'mlw_results';
+            $quiz_table = $wpdb->base_prefix . 'mlw_quizzes';
 
-        $get_quizs = $wpdb->get_results("SELECT quiz_id, quiz_name FROM {$quiz_table} WHERE deleted = 0 ");
-        foreach ($get_quizs as $quiz) {
-            $quiz_id = $quiz->quiz_id;
-            $quiz_name = $quiz->quiz_name;
-            $quiz_results = $wpdb->get_results("SELECT * FROM {$result_table} WHERE deleted = 0 AND quiz_id = $quiz_id ORDER BY result_id DESC ", OBJECT);
-            // echo '<pre>';
-            // print_r($quiz_results);
-            // echo '</pre>';
-            echo "<div>";
-            echo "<p " . $this->get_render_attribute_string('ql_leadboard_title') . ">";
-            echo $ql_leadboard_title;
-            echo "</p>";
-            echo "<div " . $this->get_render_attribute_string('ql_leadboard_description') . ">";
-            echo $ql_leadboard_description;
-            echo "</div>";
-            echo "</div>";
+            $get_quizs = $wpdb->get_results("SELECT quiz_id, quiz_name, quiz_settings FROM {$quiz_table} WHERE deleted = 0 ");
 
-            if ($quiz_results) {
-                echo "<h5>$quiz_name</h5>";
-                echo "<table class='table table-bordered' style='table-layout: fixed;'>";
-                echo "<tr>";
-                echo "<td><b>Sl.</b></td>";
-                echo "<td><b>Name</b></td>";
-                echo "<td><b>Score</b></td>";
-                echo "<td><b>Time Taken</b></td>";
-                echo "<td><b>Played On</b></td>";
-                echo "</tr>";
+            foreach ($get_quizs as $quiz) {
+                $quiz_id = $quiz->quiz_id;
+                $quiz_name = $quiz->quiz_name;
+                $is_published = unserialize(unserialize($quiz->quiz_settings)['quiz_options'])['is_publish_result'];
+                $quiz_results = $wpdb->get_results("SELECT * FROM {$result_table} WHERE deleted = 0 AND quiz_id = $quiz_id ORDER BY result_id DESC", OBJECT);
 
-                $count = 0;
-                foreach ($quiz_results as $result) {
-                    $username = get_user_by('id', $result->user);
-                    $username = $username->user_login;
-                    $count++;
-                    $mlw_qmn_results_array = unserialize($result->quiz_results);
+                echo "<div>";
+                echo "<p " . $this->get_render_attribute_string('ql_leadboard_title') . ">";
+                echo $ql_leadboard_title;
+                echo "</p>";
+                echo "<div " . $this->get_render_attribute_string('ql_leadboard_description') . ">";
+                echo $ql_leadboard_description;
+                echo "</div>";
+                echo "</div>";
 
-                    // Calculate hours
-                    $mlw_complete_hours = floor($mlw_qmn_results_array[0] / 3600);
-                    if ($mlw_complete_hours > 0) {
-                        $actual_hour = str_pad($mlw_complete_hours, 2, '0', STR_PAD_LEFT) . 'Hours';
-                    } else {
-                        $actual_hour = 0;
-                    }
-
-                    // Calculate minutes
-                    $mlw_complete_minutes = floor(($mlw_qmn_results_array[0] % 3600) / 60);
-                    if ($mlw_complete_minutes > 0) {
-                        $actual_minutes = str_pad($mlw_complete_minutes, 2, '0', STR_PAD_LEFT);
-                    } else {
-                        $actual_minutes = 0;
-                    }
-
-                    // Calculate seconds
-                    $mlw_complete_seconds = $mlw_qmn_results_array[0] % 60;
-                    $actual_seconds = str_pad($mlw_complete_seconds, 2, '0', STR_PAD_LEFT);
-
-                    $quiz_system = $result->quiz_system; // 0 = Correct/Incorrect, 1 = Point, 3 = Correct/Incorect and Point
-                    $correct_score = $result->correct_score; // Score for Correct/Incorrect
-                    $point_score = $result->point_score; // Score for Point
-
-                    if (0 == $quiz_system) {
-                        $final_score = $correct_score . '%';
-                    } elseif (1 == $quiz_system) {
-                        $final_score = $point_score;
-                    } elseif (3 == $quiz_system) {
-                        $final_score = 'Point(' . $point_score . ') | Correct(' . $correct_score . '%)';
-                    }
-                    echo '</pre>';
+                if ($quiz_results) {
+                    echo "<h5>$quiz_name</h5>";
+                    echo "<table class='table table-bordered' style='table-layout: fixed;'>";
                     echo "<tr>";
-                    echo "<td>{$count}</td>";
-                    echo "<td><a href='" . site_url() . '/author/' . $username . "'>{$result->name}</a></td>";
-                    echo "<td>{$final_score}</td>";
-                    echo "<td>{$actual_hour}h {$actual_minutes}m {$actual_seconds}</td>";
-                    echo "<td>{$result->time_taken}</td>";
+                    echo "<td><b>Sl.</b></td>";
+                    echo "<td><b>Name</b></td>";
+                    echo "<td><b>Score</b></td>";
+                    echo "<td><b>Time Taken</b></td>";
+                    echo "<td><b>Played On</b></td>";
                     echo "</tr>";
+
+                    $count = 0;
+                    foreach ($quiz_results as $result) {
+                        $username = get_user_by('id', $result->user);
+                        $username = $username->user_login;
+                        $count++;
+                        $mlw_qmn_results_array = unserialize($result->quiz_results);
+
+                        // Calculate hours
+                        $mlw_complete_hours = floor($mlw_qmn_results_array[0] / 3600);
+                        if ($mlw_complete_hours > 0) {
+                            $actual_hour = str_pad($mlw_complete_hours, 2, '0', STR_PAD_LEFT) . 'Hours';
+                        } else {
+                            $actual_hour = 0;
+                        }
+
+                        // Calculate minutes
+                        $mlw_complete_minutes = floor(($mlw_qmn_results_array[0] % 3600) / 60);
+                        if ($mlw_complete_minutes > 0) {
+                            $actual_minutes = str_pad($mlw_complete_minutes, 2, '0', STR_PAD_LEFT);
+                        } else {
+                            $actual_minutes = 0;
+                        }
+
+                        // Calculate seconds
+                        $mlw_complete_seconds = $mlw_qmn_results_array[0] % 60;
+                        $actual_seconds = str_pad($mlw_complete_seconds, 2, '0', STR_PAD_LEFT);
+
+                        $quiz_system = $result->quiz_system; // 0 = Correct/Incorrect, 1 = Point, 3 = Correct/Incorect and Point
+                        $correct_score = $result->correct_score; // Score for Correct/Incorrect
+                        $point_score = $result->point_score; // Score for Point
+
+                        if (0 == $quiz_system) {
+                            $final_score = $correct_score . '%';
+                        } elseif (1 == $quiz_system) {
+                            $final_score = $point_score;
+                        } elseif (3 == $quiz_system) {
+                            $final_score = 'Point(' . $point_score . ') | Correct(' . $correct_score . '%)';
+                        }
+
+                        if ($is_published) {
+                            $final_score = '<span class="text-success"><b>' . $final_score . '</b></span>';
+                        } else {
+                            $final_score = '<span class="text-danger"><b>Result is not published</b></span>';
+                        }
+
+                        echo '</pre>';
+                        echo "<tr>";
+                        echo "<td>{$count}</td>";
+                        echo "<td><a href='" . site_url() . '/author/' . $username . "'>{$result->name}</a></td>";
+                        echo "<td>{$final_score}</td>";
+                        echo "<td>{$actual_hour}h {$actual_minutes}m {$actual_seconds}</td>";
+                        echo "<td>{$result->time_taken}</td>";
+                        echo "</tr>";
+                    }
+                    echo "<tr align='right'><td colspan='5'><a href='{$ql_leadboard_quiz_resul_page['url']}' class='float-right'>View full result</a></td></tr>";
+                    echo "</table>";
                 }
-                echo "</table>";
             }
+        } else {
+
+            $login_url = wp_login_url();
+            echo '<br/>';
+            echo "<div class='text-center'>";
+            echo '<p class="text-danger">' . __("Please <a href='{$login_url}'>login</a> to view all quiz results", "dew") . '</p>';
+            echo '<h6>-Or-</h6>';
+            echo do_shortcode('[nextend_social_login provider="facebook"]');
+            echo "</div>";
         }
-
-        //$quiz_results = $wpdb->get_results("SELECT * FROM {$table} WHERE deleted = 0 GROUP BY quiz_id   ORDER BY result_id DESC ", OBJECT);
-
-
-
-
     }
 
     /**
